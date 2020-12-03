@@ -1,12 +1,11 @@
+name: CI
+
 on:
   push:
-    branches:
-    - master
-    tags-ignore:
-    - '*'
-  pull-request:
-    branches:
-    - master
+    branches: [ mgs4-new ]
+  pull_request:
+    branches: [ mgs4-new ]
+    
 jobs:
   Windows_Build:
     runs-on: windows-latest
