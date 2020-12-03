@@ -1,0 +1,58 @@
+on:
+  push:
+    branches:
+    - master
+    tags-ignore:
+    - '*'
+  pull-request:
+    branches:
+    - master
+jobs:
+  Windows_Build:
+    runs-on: windows-latest
+    env:
+      COMPILER: msvc
+      QT_VER: 5.14.2
+      QT_DATE: 202003291224
+      QTDIR: C:\Qt\${{ env.QT_VER }}\msvc2017_64
+      VULKAN_VER: 1.2.154.1
+      VULKAN_SDK_SHA: b64471f3a720e649c1fae6535ea83b8c642655ebed1485bfdf15bf4d88f746d9
+      VULKAN_SDK: C:\VulkanSDK\${{ env.VULKAN_VER }}
+      CACHE_DIR: ./cache
+      UPLOAD_COMMIT_HASH: 7d09e3be30805911226241afbb14f8cdc2eb054e
+      UPLOAD_REPO_FULL_NAME: RPCS3/rpcs3-binaries-win
+    steps:
+    - uses: actions/checkout@v2
+    - uses: microsoft/setup-msbuild@v1.0.0
+    - name: Get Cache Keys
+      run: .ci/get_keys-windows.sh
+      shell: bash
+    - # 'Note: Error! This step does not have a conversion path yet: Cache@2'
+      name: Cache
+      run: 'Write-Host Note: Error! This step does not have a conversion path yet: Cache@2 #task: Cache@2#displayName: Cache#inputs:#  key: ${{ env.Agent.OS }} | ${{ env.COMPILER }} | "${{ env.QT_VER }}" | ${{ env.VULKAN_SDK_SHA }} | llvm.lock | glslang.lock#  path: ${{ env.CACHE_DIR }}#  restorekeys: #    ${{ env.Agent.OS }} | ${{ env.COMPILER }}'
+      shell: powershell
+    - name: Download and unpack dependencies
+      run: .ci/setup-windows.sh
+      shell: bash
+    - name: Export Variables
+      run: .ci/export-azure-vars.sh
+      shell: bash
+    - # 'Note: Error! This step does not have a conversion path yet: MSBuild@1'
+      name: Compile SPIRV-Tools
+      run: 'Write-Host Note: Error! This step does not have a conversion path yet: MSBuild@1 #task: MSBuild@1#displayName: Compile SPIRV-Tools#inputs:#  solution: ./Vulkan/spirv-tools-build/spirv-tools-build.vcxproj#  maximumcpucount: true#  platform: x64#  configuration: Release'
+      shell: powershell
+    - name: Compile RPCS3
+      run: msbuild 'rpcs3.sln' /p:configuration='Release - LLVM' /p:platform='x64' /p:VCToolsVersion=14.25.28610
+    - name: Pack up build artifacts
+      run: .ci/deploy-windows.sh
+      shell: bash
+    - uses: actions/upload-artifact@v2
+      with:
+        path: ${{ env.Build.ArtifactStagingDirectory }}
+        name: RPCS3 for Windows
+      if: success()
+    - name: Push build to GitHub
+      run: .ci/github-upload.sh
+      shell: bash
+      if: and(ne(variables['Build.Reason'], 'PullRequest'),eq(variables['Build.Repository.Name'], 'RPCS3/rpcs3'),eq(github.ref, 'refs/heads/master'))
+                    
